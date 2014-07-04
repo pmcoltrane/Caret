@@ -104,20 +104,24 @@ define([
   });
   
   command.on("editor:word-count", function(c) {
-	var wordPattern = /\b\S+\b/g;
-    var text = editor.getSession().getValue();
-	var selected = editor.getSelectedText();
-    var lines = text.split("\n").length + " lines";
-    var characters = text.length + " characters";
+	var format = function(text){
+		var lines = text.split("\n").length + " lines";
+		var characters = text.length + " characters";
+		var words = text.match(/\b\S+\b/g);
+		words = words ? words.length : 0;
+		words += " words";
+		return [characters, words, lines].join(", ");
+	};
 	
-    var words = text.match(wordPattern);
-    words = words ? words.length : 0;
-    words += " words";
+	var text = editor.getSession().getValue();
+	var toast = format(text);
 	
-	var selectedWords = selected.match(wordPattern);
-	selectedWords = selectedWords ? selectedWords.length : 0;
-	selectedWords += " selected";
-    command.fire("status:toast", [characters, words, selectedWords, lines].join(", "));
+	text = editor.getSelectedText();
+	if ( (text !== undefined) && (text.length > 0) ) {
+		toast += " (" + format(text) + " selected)";
+	}
+	
+    command.fire("status:toast", toast);
   });
   
   return editor;

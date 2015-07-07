@@ -64,6 +64,8 @@
   "useWorker": true,
   //autocomplete triggers on Ctrl-Space
   "autocomplete": true,
+  //"Behaviors" are the auto-paired quotes and HTML tags in the editor
+  "disableBehaviors": false,
 
   //By default, the palette searches the current file's text only unless you widen the scope.
   //If you'd like it to search all open files by default, set this option to true.
@@ -73,8 +75,12 @@
   //set this to enable autosave every X minutes
   "autosaveInterval": 0,
   "autosaveOnBlur": false,
+  //If the editor jumps to the top on focus change, set this:
+  "disableReload": false,
+  //Set this to stop the editor from restoring the last set of tabs it had open
+  "disableTabRestore": false,
 
-  //Crazy? You might like Vim keybindings.
+  //Wildly eccentric? You might like Vim keybindings.
   "emulateVim": false,
 
   //Whether to show the "New file" tab button on the tab bar;

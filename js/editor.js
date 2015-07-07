@@ -2,8 +2,9 @@ define([
     "storage/file",
     "command",
     "settings!ace,user",
+    "util/i18n",
     "util/dom2"
-  ], function(File, command, Settings) {
+  ], function(File, command, Settings, i18n) {
   /*
   Module for loading the editor, adding window resizing and other events. Returns the editor straight from Ace.
   */
@@ -11,6 +12,8 @@ define([
   var aceConfig = Settings.get("ace");
 
   var editor = window.editor = ace.edit("editor");
+  //disable annoying debug message
+  editor.$blockScrolling = Infinity;
   
   var themes = document.querySelector(".theme");
   
@@ -39,6 +42,7 @@ define([
       scrollPastEnd: userConfig.scrollPastEnd,
       showGutter: !userConfig.hideGutter
     });
+    editor.setBehavioursEnabled(!userConfig.disableBehaviors);
     editor.setShowPrintMargin(userConfig.showMargin || false);
     editor.setPrintMarginColumn(userConfig.wrapLimit || 80);
     editor.setShowInvisibles(userConfig.showWhitespace || false);
@@ -84,27 +88,27 @@ define([
   });
   
   command.on("editor:print", function(c) {
-    ace.require("ace/config").loadModule("ace/ext/static_highlight", function(static) {
+    ace.require("ace/config").loadModule("ace/ext/static_highlight", function(highlighter) {
       var session = editor.getSession();
-      var printable = static.renderSync(session.getValue(), session.getMode(), editor.renderer.theme);
+      var printable = highlighter.renderSync(session.getValue(), session.getMode(), editor.renderer.theme);
       var iframe = document.createElement("iframe");
       var css = "<style>" + printable.css + "</style>";
       var doc = css + printable.html;
       iframe.srcdoc = doc;
       iframe.width = iframe.height = 1;
       iframe.style.display = "none";
-      document.body.append(iframe);
-      setTimeout(function() {
+      iframe.onload = function() {
         iframe.contentWindow.print();
         setTimeout(function() {
           iframe.remove();
         });
-      });
+      };
+      document.body.append(iframe);
     });
   });
   
   command.on("editor:word-count", function(c) {
-	var format = function(text){
+	 var format = function(text){
 		var lines = text.split("\n").length + " lines";
 		var characters = text.length + " characters";
 		var words = text.match(/\b\S+\b/g);

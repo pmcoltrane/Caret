@@ -5,7 +5,7 @@ define([
     "sessions/binding",
     "editor",
     "command",
-    "storage/settingsProvider",
+    "settings!ace",
     "util/template!templates/newTabButton.html",
     "aceBindings"
   ],
@@ -50,7 +50,6 @@ define([
       //wait for render before triggering the enter animation
       tabContainer.findAll(".enter").forEach(function(element) { element.removeClass("enter") });
     });
-    command.fire("session:retain-tabs");
   };
 
   var renderPending = false;
@@ -64,14 +63,13 @@ define([
   }, 100);
 
   var init = function() {
-    Settings.pull("ace").then(function(data) {
-      data.ace.modes.forEach(function(mode) {
-        var option = document.createElement("option");
-        option.innerHTML = mode.label;
-        option.value = mode.name;
-        syntax.append(option);
-      });
-    })
+    var ace = Settings.get("ace");
+    ace.modes.forEach(function(mode) {
+      var option = document.createElement("option");
+      option.innerHTML = mode.label;
+      option.value = mode.name;
+      syntax.append(option);
+    });
     if (!state.tabs.length) addRemove.add("");
     renderTabs();
     bindEvents();
@@ -92,15 +90,6 @@ define([
 
   return {
     addFile: addRemove.add,
-    addDefaultsFile: function(name) {
-      Settings.load(name, function() {
-        var tab = addRemove.add(Settings.getAsString(name, true));
-        tab.syntaxMode = "javascript";
-        tab.detectSyntax();
-        tab.fileName = name + ".json";
-        renderTabs();
-      });
-    },
     getAllTabs: function() {
       return state.tabs;
     },

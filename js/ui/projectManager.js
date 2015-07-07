@@ -8,8 +8,9 @@ define([
     "ui/contextMenus",
     "editor",
     "util/template!templates/projectDir.html,templates/projectFile.html",
+    "util/i18n",
     "util/dom2"
-  ], function(Settings, command, sessions, File, M, dialog, context, editor, inflate) {
+  ], function(Settings, command, sessions, File, M, dialog, context, editor, inflate, i18n) {
 
   /*
   It's tempting to store projects in local storage, similar to the way that we
@@ -131,16 +132,28 @@ define([
     var self = this;
     chrome.storage.local.get("retainedProject", function(data) {
       if (data.retainedProject) {
+        var retained = data.retainedProject;
+        if (typeof retained == "string") {
+          retained = {
+            id: retained
+          };
+        }
         self.loading = true;
         self.render();
         var file = new File();
+        var onFail = function() {
+          self.loading = false;
+          self.render();
+          chrome.storage.local.remove("retainedProject");
+        }
         file.onWrite = self.watchProjectFile.bind(self);
-        file.restore(data.retainedProject, function(err, f) {
+        file.restore(retained.id, function(err, f) {
+          if (err) {
+            return onFail();
+          }
           file.read(function(err, data) {
             if (err) {
-              self.loading = false;
-              self.render();
-              return chrome.storage.local.remove("retainedProject");
+              return onFail();
             }
             self.projectFile = file;
             self.loadProject(JSON.parse(data));
@@ -202,7 +215,6 @@ define([
     },
 
     removeDirectory: function(args) {
-      this.element.addClass("loading");
       this.directories = this.directories.filter(function(node) {
         return node.id != args.id;
       });
@@ -220,7 +232,9 @@ define([
       this.element.addClass("loading");
       var check = function() {
         counter++;
-        if (counter = self.directories.length) {
+        if (counter == self.directories.length) {
+          //render() should get rid of the class, but let's be sure
+          self.element.removeClass("loading");
           self.render();
         }
       };
@@ -401,8 +415,8 @@ define([
       file.open(function() {
         file.read(function(err, data) {
           self.loadProject(data);
-          var id = file.retain();
-          chrome.storage.local.set({retainedProject: id});
+          var retained = file.retain();
+          chrome.storage.local.set({retainedProject: retained});
           self.projectFile = file;
           file.onWrite = self.watchProjectFile.bind(self);
         });
@@ -456,7 +470,7 @@ define([
     
     editProjectFile: function() {
       if (!this.projectFile) {
-        return dialog("No project opened.");
+        return dialog(i18n.get("projectNoCurrentProject"));
       }
       var self = this;
       this.projectFile.read(function(err, data) {

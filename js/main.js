@@ -2,19 +2,25 @@ chrome.version = window.navigator.appVersion.match(/Chrome\/(\d+)/)[1] * 1 || 0;
 
 require([
     "command",
+    "editor",
     "storage/settingsProvider",
     "ui/dialog",
     "sessions",
     "util/manos",
+    "util/i18n",
     "ui/projectManager",
     "ui/keys",
     "fileManager",
     "ui/menus",
     "ui/palette",
     "ui/cli",
+    "ui/theme",
     "api",
     "storage/syncfile"
-  ], function(command, Settings, dialog, sessions, M) {
+  ], function(command, editor, Settings, dialog, sessions, M, i18n) {
+  
+  //translate inline strings
+  i18n.page();
   
   var frame = chrome.app.window.current();
   
@@ -33,8 +39,8 @@ require([
 
   //these are modules that must be loaded before init:complete
   var loadedModules = {
-    "editor": false, 
-    "fileManager": false, 
+    "editor": false,
+    "fileManager": false,
     "sessions": false
   };
   
@@ -64,12 +70,22 @@ require([
             chrome.notifications.create(updateID, {
               type: "basic",
               iconUrl: "icon-128.png",
-              title: "Caret: Update Available",
-              message: "An update to Caret version " + details.version + " is available. Would you like to update and restart now?",
-              buttons: [ { title: "Yes, update and restart" }, { title: "No thanks" }]
+              title: i18n.get("notificationUpdateAvailable"),
+              message: i18n.get("notificationUpdateDetail", details.version),
+              buttons: [ 
+                { title: i18n.get("notificationUpdateOK") },
+                { title: i18n.get("notificationUpdateWait") }
+              ]
             }, function(id) { updateID = id });
           });
         });
+      } else {
+        if (isManual) chrome.notifications.create(updateID, {
+          type: "basic",
+          iconUrl: "icon-128.png",
+          title: i18n.get("notificationNoUpdateTitle"),
+          message: i18n.get("notificationNoUpdateDetail")
+        }, function(id) { updateID = id });
       }
     });
   };
@@ -92,20 +108,20 @@ require([
     M.serial(tabs, function(tab, c) {
       if (tab.modified && (!tab.file || !tab.file.virtual)) {
         return dialog(
-          tab.fileName + " has unsaved work.",
+          i18n.get("dialogUnsaved", tab.fileName),
           [
-            { label: "Save", value: "save", shortcut: "s" },
-            { label: "Discard", value: "discard", shortcut: "n" },
-            { label: "Cancel", value: "cancel", shortcut: "c" }
+            { label: i18n.get("dialogSave"), value: "save", shortcut: "s" },
+            { label: i18n.get("dialogDiscard"), value: "discard", shortcut: "n" },
+            { label: i18n.get("dialogCancel"), value: "cancel", shortcut: "c" }
           ],
           function(value) {
             if (!value || value == "cancel") {
               cancelled = true;
             }
             if (value == "save") {
-              return tab.save(c);
+              return tab.save().then(c);
             }
-            c();
+            c(!cancelled);
           });
       }
       c();
@@ -116,14 +132,22 @@ require([
   
   command.on("app:minimize", function() {
     frame.minimize();
+    editor.focus();
   });
   
   command.on("app:maximize", function() {
     frame.isMaximized() || frame.isFullscreen() ? frame.restore() : frame.maximize();
+    editor.focus();
   });
   
   command.on("app:restart", function() {
     chrome.runtime.reload();
+  });
+  
+  //developer command for reloading CSS
+  command.on("app:reload-css", function() {
+    var link = document.querySelector("link#theme");
+    link.href = link.href;
   });
   
   //handle immersive fullscreen
